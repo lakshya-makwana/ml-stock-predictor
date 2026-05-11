@@ -117,8 +117,8 @@ try:
 
     # Prediction graph
     pred_df = pd.DataFrame({
-        'Actual': y_test.values,
-        'Predicted': predictions
+    'Actual': y_test.values.ravel(),
+    'Predicted': predictions.ravel()
     }, index=y_test.index)
 
     st.subheader("Actual vs Predicted Prices")
