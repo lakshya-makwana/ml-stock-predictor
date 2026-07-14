@@ -47,7 +47,15 @@ def backtest_strategy(df, predictions, split_index):
     max_drawdown = drawdown.min()
     strategy_return = test_df['Cumulative_Strategy'].iloc[-1] - 1
     buy_hold_return = test_df['Cumulative_BuyHold'].iloc[-1] - 1
+
     number_of_trades = int(test_df['Trade'].sum())
+    trading_days = test_df[test_df['Prediction'] == 1]
+    winning_days = trading_days[trading_days['Strategy_Return'] > 0]
+
+    if len(trading_days) > 0:
+        win_rate = len(winning_days) / len(trading_days)
+    else:
+        win_rate = 0
 
 
     print("\nBacktesting Results")
@@ -58,5 +66,6 @@ def backtest_strategy(df, predictions, split_index):
     print(f"Strategy Return: {strategy_return:.2%}")
     print(f"Buy & Hold Return: {buy_hold_return:.2%}")
     print(f"Number of Trades: {number_of_trades}")
-    
+    print(f"Win Rate: {win_rate:.2%}")
+
     return test_df
