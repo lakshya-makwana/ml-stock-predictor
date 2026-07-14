@@ -595,16 +595,16 @@ try:
         st.markdown('<div class="section-label">Technical Indicators</div>', unsafe_allow_html=True)
 
         technical_df = pd.DataFrame({
-            'MA5': df['MA5'].values,
-            'MA10': df['MA10'].values,
-            'MA20': df['MA20'].values
+            'MA_10': df['MA_10'].values,
+            'MA_20': df['MA_20'].values,
+            'MA_50': df['MA_50'].values
         }, index=df.index)
 
         ma_fig = go.Figure()
         ma_colors = {
-            'MA5': '#22d3ee',
-            'MA10': '#f59e0b',
-            'MA20': '#10b981'
+            'MA_10': '#22d3ee',
+            'MA_20': '#f59e0b',
+            'MA_50': '#10b981'
         }
         for column, color in ma_colors.items():
             ma_fig.add_trace(go.Scatter(
