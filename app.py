@@ -414,21 +414,49 @@ try:
 
     df['Close'] = close_prices
 
-    df['Prev Close'] = close_prices.shift(1)
-    df['MA5'] = close_prices.rolling(5).mean()
-    df['MA10'] = close_prices.rolling(10).mean()
-    df['MA20'] = close_prices.rolling(20).mean()
     df['Return'] = close_prices.pct_change()
+
+    df['Lag_1'] = df['Return'].shift(1)
+    df['Lag_2'] = df['Return'].shift(2)
+    df['Lag_5'] = df['Return'].shift(5)
+
+    df['MA_10'] = close_prices.rolling(window=10).mean()
+    df['MA_20'] = close_prices.rolling(window=20).mean()
+    df['MA_50'] = close_prices.rolling(window=50).mean()
+
+    df['Volatility'] = df['Return'].rolling(window=10).std()
+
+    delta = close_prices.diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+
+    avg_gain = gain.rolling(window=14).mean()
+    avg_loss = loss.rolling(window=14).mean()
+
+    rs = avg_gain / avg_loss
+    df['RSI'] = 100 - (100 / (1 + rs))
+
+    ema_12 = close_prices.ewm(span=12, adjust=False).mean()
+    ema_26 = close_prices.ewm(span=26, adjust=False).mean()
+    df['MACD'] = ema_12 - ema_26
+
+    df['Volume_Change'] = data['Volume'].squeeze().pct_change()
+
     df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
 
     df.dropna(inplace=True)
 
     features = [
-        'Prev Close',
-        'MA5',
-        'MA10',
-        'MA20',
-        'Return'
+        'Lag_1',
+        'Lag_2',
+        'Lag_5',
+        'MA_10',
+        'MA_20',
+        'MA_50',
+        'Volatility',
+        'RSI',
+        'MACD',
+        'Volume_Change'
     ]
 
     X = df[features]
