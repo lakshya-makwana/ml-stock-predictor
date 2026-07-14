@@ -4,7 +4,7 @@ import yfinance as yf
 import plotly.graph_objects as go
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score,precision_score
+from sklearn.metrics import accuracy_score,precision_score,confusion_matrix
 
 # ---------------------------------------------------
 # PAGE CONFIG
@@ -466,6 +466,13 @@ try:
     accuracy = accuracy_score(y_test, predictions)
     precision = precision_score(y_test, predictions, zero_division=0)
 
+    cm = confusion_matrix(y_test, predictions)
+    cm_df = pd.DataFrame(
+    cm,
+    index=['Actual Down', 'Actual Up'],
+    columns=['Predicted Down', 'Predicted Up']
+)
+
     # ===================================================
     # TAB 2 - PREDICTIONS
     # ===================================================
@@ -508,6 +515,13 @@ try:
 
         st.dataframe(
             pred_df.tail(20),
+            width="stretch"
+        )
+
+        st.markdown('<div class="section-label">Confusion Matrix</div>', unsafe_allow_html=True)
+
+        st.dataframe(
+            cm_df,
             width="stretch"
         )
 
