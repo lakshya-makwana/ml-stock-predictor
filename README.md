@@ -31,7 +31,6 @@ Install dependencies:
 
 ```bash
 pip install -r requirements.txt
-
 ```
 
 Run the Streamlit dashboard:
