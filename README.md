@@ -58,6 +58,13 @@ backtest.py             Backtests model-based trading strategy
 visualization.py        Creates charts and plots
 ```
 
+## Limitations
+
+- The model is trained on historical stock data, so it may not generalize to future market conditions.
+- Stock prices are affected by news, macroeconomic events, and market sentiment that are not included in the dataset.
+- The prediction system is for learning and experimentation, not real trading.
+- Backtesting results do not guarantee future performance.
+
 ## Disclaimer
 
 This project is for educational purposes only and is not financial advice.
