@@ -57,6 +57,8 @@ def backtest_strategy(df, predictions, split_index):
     else:
         win_rate = 0
 
+    excess_return = strategy_return - buy_hold_return
+
 
     print("\nBacktesting Results")
     print("-" * 30)
@@ -67,5 +69,6 @@ def backtest_strategy(df, predictions, split_index):
     print(f"Buy & Hold Return: {buy_hold_return:.2%}")
     print(f"Number of Trades: {number_of_trades}")
     print(f"Win Rate: {win_rate:.2%}")
+    print(f"Excess Return vs Buy & Hold: {excess_return:.2%}")
 
     return test_df
