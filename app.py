@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import plotly.graph_objects as go
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import accuracy_score,precision_score
 
 # ---------------------------------------------------
 # PAGE CONFIG
@@ -418,6 +418,8 @@ try:
     df['MA5'] = close_prices.rolling(5).mean()
     df['MA10'] = close_prices.rolling(10).mean()
     df['MA20'] = close_prices.rolling(20).mean()
+    df['Return'] = close_prices.pct_change()
+    df['Target'] = (df['Close'].shift(-1) > df['Close']).astype(int)
 
     df.dropna(inplace=True)
 
@@ -425,11 +427,12 @@ try:
         'Prev Close',
         'MA5',
         'MA10',
-        'MA20'
+        'MA20',
+        'Return'
     ]
 
     X = df[features]
-    y = df['Close'].squeeze()
+    y = df['Target']
 
     # ---------------------------------------------------
     # TRAIN TEST SPLIT
@@ -446,8 +449,9 @@ try:
     # MODEL
     # ---------------------------------------------------
 
-    model = RandomForestRegressor(
+    model = RandomForestClassifier(
         n_estimators=100,
+        max_depth=5,
         random_state=42
     )
 
@@ -459,10 +463,8 @@ try:
     # METRICS
     # ---------------------------------------------------
 
-    mae = mean_absolute_error(
-        y_test,
-        predictions
-    )
+    accuracy = accuracy_score(y_test, predictions)
+    precision = precision_score(y_test, predictions, zero_division=0)
 
     # ===================================================
     # TAB 2 - PREDICTIONS
@@ -470,129 +472,73 @@ try:
 
     with tab2:
 
-        st.markdown('<div class="section-label">ML Prediction Dashboard</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">ML Direction Prediction</div>', unsafe_allow_html=True)
 
-        forecast_col, accuracy_col = st.columns([2, 1])
-        with accuracy_col:
+        metric_col1, metric_col2 = st.columns(2)
+
+        with metric_col1:
             st.metric(
-                "Mean Absolute Error",
-                f"{mae:.2f}"
+                "Direction Accuracy",
+                f"{accuracy:.2%}"
+            )
+
+        with metric_col2:
+            st.metric(
+                "Up-Day Precision",
+                f"{precision:.2%}"
             )
 
         # Prediction dataframe
         pred_df = pd.DataFrame({
-            'Actual': y_test.values.ravel(),
-            'Predicted': predictions.ravel()
+            'Actual Direction': y_test.values,
+            'Predicted Direction': predictions
         }, index=y_test.index)
 
-        # Prediction chart
-        fig2 = go.Figure()
+        pred_df['Actual Direction'] = pred_df['Actual Direction'].map({
+            1: 'Up',
+            0: 'Down'
+        })
 
-        fig2.add_trace(go.Scatter(
-            x=pred_df.index,
-            y=pred_df['Actual'],
-            mode='lines',
-            name='Actual Price',
-            line=dict(color="#22d3ee", width=3)
-        ))
+        pred_df['Predicted Direction'] = pred_df['Predicted Direction'].map({
+            1: 'Up',
+            0: 'Down'
+        })
 
-        fig2.add_trace(go.Scatter(
-            x=pred_df.index,
-            y=pred_df['Predicted'],
-            mode='lines',
-            name='Predicted Price',
-            line=dict(color="#f59e0b", width=3)
-        ))
+        st.markdown('<div class="section-label">Recent Direction Predictions</div>', unsafe_allow_html=True)
 
-        apply_chart_theme(fig2, "Actual vs Predicted Prices", 560)
-        fig2.update_yaxes(title_text="Price")
+        st.dataframe(
+            pred_df.tail(20),
+            width="stretch"
+        )
 
-        with forecast_col:
-            st.plotly_chart(
-                fig2,
-                width="stretch"
-            )
-
-        # Future predictions
-        st.markdown('<div class="section-label">Future Price Prediction</div>', unsafe_allow_html=True)
+        # Next-day direction signal
+        st.markdown('<div class="section-label">Next-Day Model Signal</div>', unsafe_allow_html=True)
 
         latest_data = df[features].iloc[-1:]
 
-        future_predictions = []
+        next_day_prediction = model.predict(latest_data)[0]
+        next_day_probability = model.predict_proba(latest_data)[0][1]
 
-        current_input = latest_data.copy()
-
-        for _ in range(prediction_days):
-
-            pred = model.predict(current_input)[0]
-
-            future_predictions.append(pred)
-
-            current_input['Prev Close'] = pred
-            current_input['MA5'] = pred
-            current_input['MA10'] = pred
-            current_input['MA20'] = pred
-
-        future_dates = pd.date_range(
-            start=pd.to_datetime("today") + pd.Timedelta(days=1),
-            periods=prediction_days
-        )
-
-        future_df = pd.DataFrame({
-            'Date': future_dates,
-            'Predicted Price': future_predictions
-        })
-
-        future_df['Predicted Price'] = future_df['Predicted Price'].astype(float)
-
-        fig3 = go.Figure()
-
-        fig3.add_trace(go.Scatter(
-            x=future_df['Date'],
-            y=future_df['Predicted Price'],
-            mode='lines+markers',
-            name='Future Prediction',
-            line=dict(color="#10b981", width=3),
-            marker=dict(size=9, color="#22d3ee", line=dict(width=2, color="#0f172a"))
-        ))
-
-        apply_chart_theme(fig3, f"{prediction_days}-Day Future Forecast", 520)
-        fig3.update_yaxes(title_text="Predicted Price")
-
-        table_col, chart_col = st.columns([1, 2])
-        with table_col:
-            st.dataframe(
-                future_df.style.format({'Predicted Price': '${:,.2f}'}),
-                width="stretch",
-                hide_index=True
-            )
-        with chart_col:
-            st.plotly_chart(
-                fig3,
-                width="stretch"
-            )
-
-        # Buy/Sell Signal
-        forecast_change = float(future_predictions[-1] - current_price)
-        forecast_pct = (forecast_change / current_price) * 100
-        if future_predictions[-1] > current_price:
+        if next_day_prediction == 1:
             st.markdown(
                 f"""
                 <div class="signal-card buy">
-                    <div class="label">Model signal</div>
-                    <div class="value">BUY SIGNAL</div>
-                    <div class="sub">Forecast is ${forecast_change:,.2f} ({forecast_pct:.2f}%) above the latest close.</div>
+                    <div class="label">Model direction</div>
+                    <div class="value">UP</div>
+                    <div class="sub">The model estimates a {next_day_probability:.2%} probability of upward movement on the next trading day.</div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
         else:
+            down_probability = 1 - next_day_probability
+
             st.markdown(
                 f"""
                 <div class="signal-card sell">
-                    <div class="label">Model signal</div>
-                    <div class="value">SELL SIGNAL</div>
-                    <div class="sub">Forecast is ${abs(forecast_change):,.2f} ({abs(forecast_pct):.2f}%) below the latest close.</div>
+                    <div class="label">Model direction</div>
+                    <div class="value">DOWN</div>
+                    <div class="sub">The model estimates a {down_probability:.2%} probability of downward or flat movement on the next trading day.</div>
                 </div>
                 """,
                 unsafe_allow_html=True
